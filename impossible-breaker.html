@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>常識破壊エンジン</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;700&family=Space+Mono:wght@400;700&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --border: #2a2a3a;
+    --accent: #e8c547;
+    --accent2: #4fc3f7;
+    --green: #4caf82;
+    --danger: #ff6b6b;
+    --text: #e8e8f0;
+    --muted: #6b6b8a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Serif JP', serif;
+    min-height: 100vh;
+    padding: 24px 16px 60px;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(232,197,71,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(232,197,71,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap { max-width: 640px; margin: 0 auto; position: relative; z-index: 1; }
+
+  header { margin-bottom: 32px; }
+
+  .eyebrow {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 4px;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  h1 { font-size: clamp(20px, 5.5vw, 30px); font-weight: 700; line-height: 1.2; }
+  h1 span { color: var(--accent); }
+
+  .subtitle {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 8px;
+    font-weight: 300;
+    line-height: 1.6;
+  }
+
+  .input-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 20px;
+    margin-bottom: 24px;
+  }
+
+  .input-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--accent2);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    display: block;
+  }
+
+  textarea {
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Noto Serif JP', serif;
+    font-size: 15px;
+    line-height: 1.7;
+    padding: 8px 0;
+    resize: none;
+    outline: none;
+    min-height: 72px;
+  }
+  textarea::placeholder { color: var(--muted); }
+  textarea:focus { border-bottom-color: var(--accent); }
+
+  .btn {
+    display: block;
+    width: 100%;
+    margin-top: 16px;
+    padding: 14px;
+    background: var(--accent);
+    color: #0a0a0f;
+    border: none;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 1px;
+    transition: all 0.2s;
+  }
+  .btn:hover:not(:disabled) { background: #f0d060; transform: translateY(-1px); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .examples { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .ex-chip {
+    font-size: 11px;
+    padding: 5px 10px;
+    border: 1px solid var(--border);
+    border-radius: 1px;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'Space Mono', monospace;
+  }
+  .ex-chip:hover { border-color: var(--accent); color: var(--accent); }
+
+  #output { display: none; }
+
+  .section-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 4px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* ── カード ── */
+  .reason-card {
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    margin-bottom: 20px;
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(14px);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+  }
+  .reason-card.visible { opacity: 1; transform: translateY(0); }
+
+  /* 壁（不可能の理由） */
+  .wall {
+    background: var(--surface);
+    padding: 14px 16px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    border-bottom: 1px solid var(--border);
+  }
+  .wall-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--danger);
+    background: rgba(255,107,107,0.1);
+    padding: 2px 7px;
+    border-radius: 1px;
+    white-space: nowrap;
+    margin-top: 3px;
+    flex-shrink: 0;
+  }
+  .wall-text { font-size: 14px; line-height: 1.6; font-weight: 700; color: #ccc; }
+
+  /* 反証 */
+  .refute {
+    padding: 12px 16px;
+    background: rgba(79,195,247,0.04);
+    border-bottom: 1px solid var(--border);
+  }
+  .block-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .block-label.blue { color: var(--accent2); }
+  .block-label.green { color: var(--green); }
+  .block-label.yellow { color: var(--accent); }
+
+  .refute-text { font-size: 13px; line-height: 1.8; font-weight: 300; }
+  .example-tag {
+    display: inline-block;
+    margin-top: 7px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--accent2);
+    background: rgba(79,195,247,0.08);
+    padding: 2px 8px;
+    border-radius: 1px;
+  }
+
+  /* 解決策 */
+  .solution {
+    padding: 12px 16px;
+    background: rgba(76,175,130,0.05);
+  }
+  .solution-text { font-size: 13px; line-height: 1.8; font-weight: 300; color: #c8eedd; }
+  .solution-steps {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .step {
+    font-size: 12px;
+    color: var(--green);
+    font-family: 'Space Mono', monospace;
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    line-height: 1.5;
+  }
+  .step::before { content: '→'; flex-shrink: 0; }
+
+  /* 突破口 */
+  .summary-box {
+    border: 1px solid var(--accent);
+    border-radius: 2px;
+    padding: 20px;
+    margin-top: 8px;
+    background: rgba(232,197,71,0.04);
+    opacity: 0;
+    transform: translateY(14px);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+  }
+  .summary-box.visible { opacity: 1; transform: translateY(0); }
+  .summary-box .section-title { color: var(--accent); }
+  .summary-box .section-title::after { background: rgba(232,197,71,0.3); }
+  .summary-text { font-size: 14px; line-height: 1.9; font-weight: 300; }
+
+  /* ローディング */
+  .loading { text-align: center; padding: 40px 0; display: none; }
+  .loading-dots { display: inline-flex; gap: 6px; }
+  .loading-dots span {
+    width: 6px; height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+  .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes pulse {
+    0%,80%,100% { opacity:0.2; transform:scale(0.8); }
+    40% { opacity:1; transform:scale(1); }
+  }
+  .loading-text {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-top: 12px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Paradigm Breaker</div>
+    <h1>「不可能」の<span>突破</span>エンジン</h1>
+    <p class="subtitle">壁を列挙し、反証し、<strong style="color:var(--green);font-weight:400;">解決策</strong>まで導きます。</p>
+  </header>
+
+  <div class="input-section">
+    <span class="input-label">// 挑戦したいテーマ・アイデア</span>
+    <textarea id="themeInput" placeholder="例：宇宙に行ける飛行機" rows="3"></textarea>
+    <div class="examples">
+      <div class="ex-chip" onclick="setExample('宇宙に行ける飛行機')">宇宙に行ける飛行機</div>
+      <div class="ex-chip" onclick="setExample('砂漠を農地に変える')">砂漠を農地に</div>
+      <div class="ex-chip" onclick="setExample('病院のない地域で高度な手術を行う')">遠隔手術</div>
+      <div class="ex-chip" onclick="setExample('人間が150年健康に生きる')">150年健康寿命</div>
+    </div>
+    <button class="btn" id="analyzeBtn" onclick="analyze()">突破口を探す →</button>
+  </div>
+
+  <div id="output">
+    <div class="loading" id="loading">
+      <div class="loading-dots"><span></span><span></span><span></span></div>
+      <div class="loading-text">常識を解体中...</div>
+    </div>
+    <div id="results"></div>
+  </div>
+</div>
+
+<script>
+// ── データ ─────────────────────────────────────────────────────────
+
+const SPECIFIC = {
+  宇宙: {
+    reasons: [
+      {
+        wall: "大気圏突破に必要な第一宇宙速度（秒速7.9km）を飛行機エンジンでは出せない",
+        refutation: "空気吸い込み式エンジンの限界は高度・速度の問題。スクラムジェットはマッハ5以上で作動し、さらに「飛行機は発射台」と割り切ればロケット点火前の初速を稼げる。",
+        example: "Virgin Galactic：母機WhiteKnightTwoから切り離してロケット点火、高度86kmへ",
+        solution: "飛行機＋ロケットの2段式設計を採用する。飛行機は高度15kmまで上昇するだけでよく、そこからロケットが引き継ぐ。",
+        steps: ["高度15kmまで飛行機で上昇（燃料消費を大幅削減）", "分離後にロケットエンジン点火（必要Δvを60%以上削減）", "帰還時は翼で滑空着陸（ランナウェイ再利用可能）"]
+      },
+      {
+        wall: "飛行機の機体構造は宇宙空間の真空・極端な温度差に耐えられない",
+        refutation: "「飛行機」の定義を問い直せばよい。断熱セラミックタイル・炭素繊維複合材は既に宇宙往還機で実証済み。スペースシャトルは翼を持つ宇宙機だった。",
+        example: "X-37B：翼付き無人宇宙機が780日以上の軌道滞在を達成",
+        solution: "機体素材をセラミック断熱タイル＋CFRP複合材に刷新し、宇宙空間を飛ぶ「航空機」として再設計する。",
+        steps: ["機首・前縁部にセラミックタイル（耐熱1650℃）を適用", "機体構造をCFRP製にして軽量化と剛性を両立", "与圧キャビンを独立した宇宙船モジュールとして設計"]
+      },
+      {
+        wall: "必要な燃料搭載量が飛行機の積載限界を大幅に超える",
+        refutation: "高高度・高速状態での点火は必要Δvを大幅削減できる。液体水素は比推力が高く、同重量で従来燃料の2.5倍のエネルギーを持つ。",
+        example: "ストラトローンチ：翼幅117m機体から宇宙ロケットを空中発射、燃料効率を最大化",
+        solution: "液体水素エンジンと空中発射を組み合わせ、地上発射比で燃料を40%削減する設計にする。",
+        steps: ["液体水素／液体酸素エンジンを採用（比推力450秒）", "空中発射により大気の濃い層を飛行機で通過", "残燃料の軌道上補給システムを将来オプションとして設計"]
+      },
+      {
+        wall: "宇宙飛行士の安全確保が既存の航空安全基準と相容れない",
+        refutation: "飛行機型は緊急時に大気圏内で通常着陸できる。ロケットより中止判断のウィンドウが広く、安全性で勝る側面もある。",
+        example: "スペースシャトル135回飛行：有翼設計で緊急帰還ルートを複数確保",
+        solution: "フライトアボートシステムを航空機基準で設計し、ロケット段階・宇宙飛行段階それぞれに独立した緊急帰還手順を持たせる。",
+        steps: ["低高度フェーズ：エンジン停止→翼で滑空着陸（通常の緊急着陸と同等）", "ロケット点火後：分離キャプセルによる緊急脱出", "軌道上：再突入カプセルを独立モジュールとして常時待機"]
+      },
+      {
+        wall: "開発コストが国家規模になり民間では資金調達できない",
+        refutation: "SpaceXがファルコン9を数千億円で開発したように、官民連携と反復設計で大幅なコスト削減が可能。宇宙観光市場は2030年代に1兆円規模と試算されている。",
+        example: "SpaceX：ファルコン9の再利用で打ち上げコストを1/10に削減し、商業宇宙を創出",
+        solution: "段階的に宇宙観光→貨物輸送→有人宇宙飛行と市場を拡大し、収益で開発費を回収するロードマップを設計する。",
+        steps: ["Phase1：高高度遊覧飛行（高度20km）で観光収益を確保", "Phase2：準軌道飛行（高度100km）で宇宙観光市場を開拓", "Phase3：軌道投入能力を追加し、衛星打ち上げ市場へ参入"]
+      }
+    ],
+    breakthrough: "「宇宙に行ける飛行機」の核心は、飛行機とロケットを「競合」ではなく「協業」として設計することにある。飛行機の再利用性・空港インフラ・段階的上昇という強みを活かし、ロケットの高速加速と組み合わせる2段式アーキテクチャが現実解。Virgin GalacticとStratolaunchはすでにその答えの実証段階にある。次の一手は液体水素エンジン＋空中発射の量産化だ。"
+  },
+
+  砂漠: {
+    reasons: [
+      {
+        wall: "水が極端に少なく、農業に必要な灌漑が不可能",
+        refutation: "海水淡水化コストは過去20年で80%以上低下。太陽光発電と組み合わせれば砂漠沿岸部では無尽蔵の真水が作れる。",
+        example: "イスラエル：国土60%が砂漠でも点滴灌漑で農業輸出国に転換",
+        solution: "太陽光発電所と逆浸透膜淡水化プラントを砂漠沿岸に併設し、農業用水を自給する。",
+        steps: ["太陽光パネルで電力を自給（砂漠の日照は年2500時間以上）", "余剰電力で海水淡水化（逆浸透膜）を稼働", "点滴灌漑で水使用量を露地栽培の30%以下に抑制"]
+      },
+      {
+        wall: "土壌が痩せていて作物が育たない",
+        refutation: "土壌不要の水耕・養液栽培や、バイオチャーで砂に保水性を付与する技術が実証済み。砂漠は病害虫が少なく、むしろ制御環境農業に適している。",
+        example: "UAE：砂漠の垂直農場で土なしレタス・ハーブを年中量産",
+        solution: "屋内垂直農場＋砂地へのバイオチャー混合の2トラック戦略で土壌問題を回避する。",
+        steps: ["短期：垂直農場で葉物野菜・ハーブを収益化", "中期：砂にバイオチャー＋微生物を混合し土壌を育成", "長期：外気露地栽培に移行し大規模穀物生産へ"]
+      },
+      {
+        wall: "昼間55℃超の高温で作物が枯れる",
+        refutation: "高温と表裏一体の豊富な太陽光は発電・冷却の両方に使える。蒸発冷却温室や地下農場で温度を制御しつつ、太陽光を電力源として活用できる。",
+        example: "サハラフォレスト・プロジェクト：チュニジア砂漠で太陽熱冷却温室を実証",
+        solution: "遮光ネット＋蒸発冷却の「パッシブ冷却温室」を建設し、外気より20℃低い栽培環境を作る。",
+        steps: ["遮光ネット（遮光率50%）で直射日光を遮断", "湿らせた多孔質素材を通じた蒸発冷却で気温を下げる", "温室内CO₂を濃縮し光合成を促進（収量1.5倍）"]
+      },
+      {
+        wall: "砂嵐で施設・設備が破壊される",
+        refutation: "砂嵐対策は建築設計の問題。防砂林・半地下構造・流線形設計で砂嵐の影響を最小化でき、同時に風力発電の電力源として活用できる。",
+        example: "中国・クブチ砂漠：30年の植林で6000km²を緑地化、砂嵐を防ぎながら農地化",
+        solution: "農場外周に防砂林を植え、施設を半地下構造にして風荷重を90%削減する。",
+        steps: ["外周3列の砂防林（ポプラ・タマリスク）を先行植栽", "主要施設を地表より1.5m掘り下げた半地下構造で建設", "風向を計算した流線形屋根で砂の堆積を防ぐ"]
+      },
+      {
+        wall: "輸送インフラが整っておらず、出荷コストが採算を上回る",
+        refutation: "砂漠は既存インフラの制約がなく、一から設計できる。太陽光電力で動く電動貨物車両や、軽量高価値農産品（ハーブ・スーパーフード）に特化すれば輸送コスト問題を回避できる。",
+        example: "モロッコ：サハラ砂漠の太陽光で発電し欧州へ電力輸出、インフラ問題を逆転",
+        solution: "まず高付加価値・軽量農産物に特化し、輸送コストを収益で吸収できる品目から参入する。",
+        steps: ["Phase1：サフラン・トリュフ・高級ハーブなど1kgあたり1万円超の品目に集中", "Phase2：収益で道路・冷蔵輸送インフラを整備", "Phase3：穀物・野菜の大量生産へ拡大"]
+      }
+    ],
+    breakthrough: "砂漠農業の突破口は「砂漠の弱点を克服する」発想を捨てること。豊富な太陽光・病害虫の少なさ・広大な安価な土地という強みを活かし、「水だけ解決すれば世界最高の農業地帯になる」と設計し直す。太陽光発電＋海水淡水化＋垂直農場の三位一体が現実解であり、UAEとイスラエルがすでに実証している。"
+  }
+};
+
+function defaultData(theme) {
+  return {
+    theme,
+    reasons: [
+      {
+        wall: "技術的に実現不可能とされている",
+        refutation: "「技術的に不可能」は現時点の技術水準に基づく判断に過ぎない。ライト兄弟の50年前、空を飛ぶことは物理的に無理とされていた。技術のブレークスルーは非線形に訪れる。",
+        example: "SpaceX：使い捨て当然のロケットを再利用可能にし打ち上げコストを90%削減",
+        solution: "現在の技術の「どの部分が本当の限界か」を分解し、代替アプローチを並列で探索する。",
+        steps: ["制約を「物理法則」と「現在の工学」に分けて列挙", "物理法則は変えられないが、工学的制約は設計で回避できる", "既存技術の組み合わせで突破できないか検討する"]
+      },
+      {
+        wall: "コストが莫大すぎて採算が取れない",
+        refutation: "初期コストの高さは量産化・規模の経済・新素材の登場で劇的に変化する。太陽光発電は過去30年でコストが99%以上下落した。「高すぎる」は現在の生産方式を固定した思考実験に過ぎない。",
+        example: "太陽光パネル：1977年に1Wあたり76ドル→2023年には0.2ドル以下",
+        solution: "量産化ロードマップを描き、どの段階でコストが採算ラインを下回るかを試算する。",
+        steps: ["現在のコスト構造を「固定費」と「変動費」に分解", "量産効果でどちらが下がるかをシミュレーション", "採算ラインを下回る生産量を目標に設定し逆算で計画"]
+      },
+      {
+        wall: "規制・法律・社会的合意が得られない",
+        refutation: "規制は技術の後を追うもの。実証実験・特区制度・国際連携によって先行できる。自動運転も無人航空機も、最初は「法律がない」状態から実績を積みながら制度が整備された。",
+        example: "Waymo：米国複数州で完全無人タクシーの商用運行を実現し、法整備を先導",
+        solution: "規制が緩やかな地域・特区で先行実証し、データと安全実績で規制当局を説得するアプローチを取る。",
+        steps: ["規制の最も厳しくない国・地域を調査して実証フィールドを選定", "小規模実証→データ収集→規制当局との対話を繰り返す", "実績データをもとに国際標準を提案し普及を加速"]
+      },
+      {
+        wall: "前例がなく、誰も成功したことがない",
+        refutation: "前例のなさは不可能の証明ではなく「まだ誰も試みていない」に過ぎない。先行者利益を独占できる最大のチャンスでもある。ホンダP2も、最初は前例なしから始まった。",
+        example: "ホンダ P2：1996年に世界初の自律二足歩行ロボットを実現。「不可能」を塗り替えた",
+        solution: "失敗コストを最小化しながら高速で実験を繰り返す「小さく試す」戦略を採用する。",
+        steps: ["最小構成のプロトタイプを最短で作り仮説を検証", "失敗から学んだ知見を次のプロトタイプに反映", "実証データが蓄積したら一気にスケールアップ"]
+      },
+      {
+        wall: "既存の業界プレイヤーの抵抗で市場に参入できない",
+        refutation: "既存プレイヤーが守ろうとするのは現在のビジネスモデル。全く異なるアーキテクチャで参入すれば、彼らの強みは弱みに変わる。Teslaは自動車ディーラー網を持たないことを強みにした。",
+        example: "Tesla：ディーラー不要のD2C販売で既存自動車業界の流通コストを無効化",
+        solution: "既存プレイヤーが「参入する理由がない」マーケットセグメントを見つけ、そこを拠点に拡大する。",
+        steps: ["既存プレイヤーが軽視しているセグメントを特定", "そこで圧倒的な価値を提供し、強固な橋頭堡を築く", "実績と資本を蓄えてからメインマーケットへ進出"]
+      }
+    ],
+    breakthrough: `「${theme}」の核心的突破口は、"なぜ不可能とされているか"の前提そのものを問い直すことにある。マッキントッシュが「コンピュータは専門家のもの」という前提を壊したように、制約を逆手にとった設計思想が常識を覆す。技術・コスト・規制のいずれも、思い込みを取り除けば突破可能な壁に変わる。`
+  };
+}
+
+function setExample(text) {
+  document.getElementById('themeInput').value = text;
+}
+
+function getData(theme) {
+  for (const key of Object.keys(SPECIFIC)) {
+    if (theme.includes(key)) return { theme, ...SPECIFIC[key] };
+  }
+  return defaultData(theme);
+}
+
+function analyze() {
+  const theme = document.getElementById('themeInput').value.trim();
+  if (!theme) return;
+
+  const btn = document.getElementById('analyzeBtn');
+  const output = document.getElementById('output');
+  const loading = document.getElementById('loading');
+  const results = document.getElementById('results');
+
+  btn.disabled = true;
+  output.style.display = 'block';
+  loading.style.display = 'block';
+  results.innerHTML = '';
+
+  setTimeout(() => {
+    const data = getData(theme);
+    loading.style.display = 'none';
+    render(data);
+    btn.disabled = false;
+  }, 1400);
+}
+
+function render(data) {
+  const results = document.getElementById('results');
+  let html = '<div class="section-title">壁 → 反証 → 解決策</div>';
+
+  data.reasons.forEach((item, i) => {
+    const stepsHtml = item.steps.map(s => `<div class="step">${s}</div>`).join('');
+    html += `
+    <div class="reason-card" id="card${i}">
+      <div class="wall">
+        <span class="wall-num">壁 ${String(i+1).padStart(2,'0')}</span>
+        <span class="wall-text">${item.wall}</span>
+      </div>
+      <div class="refute">
+        <div class="block-label blue">// 反証</div>
+        <div class="refute-text">${item.refutation}</div>
+        <div class="example-tag">実例 → ${item.example}</div>
+      </div>
+      <div class="solution">
+        <div class="block-label green">// 解決策</div>
+        <div class="solution-text">${item.solution}</div>
+        <div class="solution-steps">${stepsHtml}</div>
+      </div>
+    </div>`;
+  });
+
+  html += `
+  <div class="summary-box" id="summaryBox">
+    <div class="section-title">核心的突破口</div>
+    <div class="summary-text">${data.breakthrough}</div>
+  </div>`;
+
+  results.innerHTML = html;
+
+  data.reasons.forEach((_, i) => {
+    setTimeout(() => {
+      const el = document.getElementById('card' + i);
+      if (el) el.classList.add('visible');
+    }, i * 180);
+  });
+
+  setTimeout(() => {
+    const el = document.getElementById('summaryBox');
+    if (el) el.classList.add('visible');
+  }, data.reasons.length * 180 + 200);
+}
+
+document.getElementById('themeInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) analyze();
+});
+</script>
+</body>
+</html>
