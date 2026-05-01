@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>常識破壊エンジン</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;700&family=Space+Mono:wght@400;700&display=swap');
+  :root {
+    --bg: #0a0a0f; --surface: #111118; --border: #2a2a3a;
+    --accent: #e8c547; --accent2: #4fc3f7; --green: #4caf82;
+    --danger: #ff6b6b; --text: #e8e8f0; --muted: #6b6b8a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Noto Serif JP', serif; min-height: 100vh; padding: 24px 16px 60px; }
+  body::before { content: ''; position: fixed; inset: 0; background-image: linear-gradient(rgba(232,197,71,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(232,197,71,0.03) 1px,transparent 1px); background-size: 40px 40px; pointer-events: none; z-index: 0; }
+  .wrap { max-width: 640px; margin: 0 auto; position: relative; z-index: 1; }
+  header { margin-bottom: 32px; }
+  .eyebrow { font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 4px; color: var(--accent); text-transform: uppercase; margin-bottom: 8px; }
+  h1 { font-size: clamp(20px,5.5vw,30px); font-weight: 700; line-height: 1.2; }
+  h1 span { color: var(--accent); }
+  .subtitle { font-size: 13px; color: var(--muted); margin-top: 8px; font-weight: 300; line-height: 1.6; }
+  .input-section { background: var(--surface); border: 1px solid var(--border); border-radius: 2px; padding: 20px; margin-bottom: 24px; }
+  .input-label { font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 3px; color: var(--accent2); text-transform: uppercase; margin-bottom: 10px; display: block; }
+  textarea { width: 100%; background: transparent; border: none; border-bottom: 1px solid var(--border); color: var(--text); font-family: 'Noto Serif JP', serif; font-size: 15px; line-height: 1.7; padding: 8px 0; resize: none; outline: none; min-height: 72px; }
+  textarea::placeholder { color: var(--muted); }
+  textarea:focus { border-bottom-color: var(--accent); }
+  .btn { display: block; width: 100%; margin-top: 16px; padding: 14px; background: var(--accent); color: #0a0a0f; border: none; font-family: 'Space Mono', monospace; font-size: 12px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; cursor: pointer; border-radius: 1px; transition: all 0.2s; }
+  .btn:hover:not(:disabled) { background: #f0d060; transform: translateY(-1px); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .examples { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .ex-chip { font-size: 11px; padding: 5px 10px; border: 1px solid var(--border); border-radius: 1px; color: var(--muted); cursor: pointer; transition: all 0.2s; font-family: 'Space Mono', monospace; }
+  .ex-chip:hover { border-color: var(--accent); color: var(--accent); }
+  #output { display: none; }
+  .section-title { font-family: 'Space Mono', monospace; font-size: 9px; letter-spacing: 4px; color: var(--muted); text-transform: uppercase; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .reason-card { border: 1px solid var(--border); border-radius: 2px; margin-bottom: 20px; overflow: hidden; opacity: 0; transform: translateY(14px); transition: opacity 0.4s ease, transform 0.4s ease; }
+  .reason-card.visible { opacity: 1; transform: translateY(0); }
+  .wall { background: var(--surface); padding: 14px 16px; display: flex; gap: 12px; align-items: flex-start; border-bottom: 1px solid var(--border); }
+  .wall-num { font-family: 'Space Mono', monospace; font-size: 10px; color: var(--danger); background: rgba(255,107,107,0.1); padding: 2px 7px; border-radius: 1px; white-space: nowrap; margin-top: 3px; flex-shrink: 0; }
+  .wall-text { font-size: 14px; line-height: 1.6; font-weight: 700; color: #ccc; }
+  .refute { padding: 12px 16px; background: rgba(79,195,247,0.04); border-bottom: 1px solid var(--border); }
+  .block-label { font-family: 'Space Mono', monospace; font-size: 9px; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 6px; }
+  .block-label.blue { color: var(--accent2); }
+  .block-label.green { color: var(--green); }
+  .refute-text { font-size: 13px; line-height: 1.8; font-weight: 300; }
+  .example-tag { display: inline-block; margin-top: 7px; font-family: 'Space Mono', monospace; font-size: 10px; color: var(--accent2); background: rgba(79,195,247,0.08); padding: 2px 8px; border-radius: 1px; }
+  .solution { padding: 12px 16px; background: rgba(76,175,130,0.05); }
+  .solution-text { font-size: 13px; line-height: 1.8; font-weight: 300; color: #c8eedd; }
+  .solution-steps { margin-top: 8px; display: flex; flex-direction: column; gap: 5px; }
+  .step { font-size: 12px; color: var(--green); font-family: 'Space Mono', monospace; display: flex; gap: 8px; align-items: flex-start; line-height: 1.5; }
+  .step::before { content: '→'; flex-shrink: 0; }
+  .summary-box { border: 1px solid var(--accent); border-radius: 2px; padding: 20px; margin-top: 8px; background: rgba(232,197,71,0.04); opacity: 0; transform: translateY(14px); transition: opacity 0.4s ease, transform 0.4s ease; }
+  .summary-box.visible { opacity: 1; transform: translateY(0); }
+  .summary-box .section-title { color: var(--accent); }
+  .summary-box .section-title::after { background: rgba(232,197,71,0.3); }
+  .summary-text { font-size: 14px; line-height: 1.9; font-weight: 300; }
+  .loading { text-align: center; padding: 40px 0; display: none; }
+  .loading-dots { display: inline-flex; gap: 6px; }
+  .loading-dots span { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; animation: pulse 1.2s ease-in-out infinite; }
+  .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes pulse { 0%,80%,100%{opacity:0.2;transform:scale(0.8)}40%{opacity:1;transform:scale(1)} }
+  .loading-text { font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; margin-top: 12px; }
+  .no-match { background: var(--surface); border: 1px solid var(--border); border-radius: 2px; padding: 20px; font-size: 13px; color: var(--muted); line-height: 1.8; }
+  .no-match strong { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Paradigm Breaker</div>
+    <h1>「不可能」の<span>突破</span>エンジン</h1>
+    <p class="subtitle">壁を列挙し、反証し、<strong style="color:var(--green);font-weight:400;">解決策</strong>まで導きます。</p>
+  </header>
+  <div class="input-section">
+    <span class="input-label">// 挑戦したいテーマ・アイデア</span>
+    <textarea id="themeInput" placeholder="例：宇宙に行ける飛行機、砂漠の農業、遠隔手術…" rows="3"></textarea>
+    <div class="examples">
+      <div class="ex-chip" onclick="setExample('宇宙に行ける飛行機')">宇宙×飛行機</div>
+      <div class="ex-chip" onclick="setExample('砂漠を農地に変える')">砂漠農業</div>
+      <div class="ex-chip" onclick="setExample('病院のない地域で手術する')">遠隔手術</div>
+      <div class="ex-chip" onclick="setExample('核融合発電を実用化する')">核融合</div>
+      <div class="ex-chip" onclick="setExample('人間が150年健康に生きる')">超長寿</div>
+      <div class="ex-chip" onclick="setExample('海水から飲料水を作る')">海水淡水化</div>
+      <div class="ex-chip" onclick="setExample('自動車を空飛ぶ車にする')">空飛ぶ車</div>
+      <div class="ex-chip" onclick="setExample('プラスチックごみをゼロにする')">脱プラ</div>
+    </div>
+    <button class="btn" id="analyzeBtn" onclick="analyze()">突破口を探す →</button>
+  </div>
+  <div id="output">
+    <div class="loading" id="loading">
+      <div class="loading-dots"><span></span><span></span><span></span></div>
+      <div class="loading-text">常識を解体中...</div>
+    </div>
+    <div id="results"></div>
+  </div>
+</div>
+
+<script>
+const DB = {
+  宇宙: {
+    reasons: [
+      { wall:"大気圏突破に必要な速度（秒速7.9km）を飛行機エンジンでは出せない", refutation:"スクラムジェットはマッハ5以上で作動し、空中発射方式なら飛行機は「動く発射台」として機能すれば十分。全速を飛行機一機で賄う必要はない。", example:"Virgin Galactic：母機から切り離しロケット点火、高度86kmへ到達", solution:"飛行機＋ロケットの2段式設計。飛行機は高度15kmまで担当、そこからロケットが引き継ぐ。", steps:["高度15kmまで飛行機で上昇（燃料消費を大幅削減）","分離後にロケットエンジン点火（必要Δvを60%削減）","帰還時は翼で滑空着陸（完全再利用可能）"] },
+      { wall:"機体構造が宇宙空間の真空・極端な温度差に耐えられない", refutation:"断熱セラミックタイルとCFRP複合材は宇宙往還機で実証済み。スペースシャトルは翼を持つ宇宙機として30年運用された。", example:"X-37B：翼付き無人宇宙機が780日以上の軌道滞在を達成", solution:"機体素材をセラミック断熱タイル＋CFRP複合材に刷新し、宇宙空間を飛ぶ「航空機」として再設計する。", steps:["機首・前縁部にセラミックタイル（耐熱1650℃）を適用","機体構造をCFRP製にして軽量化と剛性を両立","与圧キャビンを独立した宇宙船モジュールとして設計"] },
+      { wall:"燃料搭載量が飛行機の積載限界を超える", refutation:"高高度・高速状態での点火は必要Δvを大幅削減できる。液体水素は同重量で従来燃料の2.5倍のエネルギーを持つ。", example:"ストラトローンチ：翼幅117mの世界最大機から宇宙ロケットを空中発射", solution:"液体水素エンジンと空中発射を組み合わせ、地上発射比で燃料を40%削減する。", steps:["液体水素／液体酸素エンジンを採用（比推力450秒）","空中発射で大気の濃い層を飛行機が通過","軌道上燃料補給システムを将来オプションとして設計"] },
+      { wall:"宇宙飛行士の安全確保が航空安全基準と相容れない", refutation:"飛行機型は緊急時に大気圏内で通常着陸できる。ロケットより中止判断のウィンドウが広く、安全性で勝る側面もある。", example:"スペースシャトル135回飛行：有翼設計で緊急帰還ルートを複数確保", solution:"フライトアボートシステムを航空機基準で設計し、各フェーズに独立した緊急帰還手順を持たせる。", steps:["低高度フェーズ：エンジン停止→翼で滑空着陸","ロケット点火後：分離キャプセルによる緊急脱出","軌道上：再突入カプセルを独立モジュールとして常時待機"] },
+      { wall:"開発コストが国家規模になり民間では資金調達できない", refutation:"SpaceXがファルコン9を数千億円で開発したように、官民連携と反復設計でコスト削減が可能。宇宙観光市場は2030年代に1兆円規模と試算される。", example:"SpaceX：ファルコン9再利用で打ち上げコストを1/10に削減", solution:"段階的に市場を拡大し、収益で開発費を回収するロードマップを設計する。", steps:["Phase1：高高度遊覧飛行（高度20km）で観光収益を確保","Phase2：準軌道飛行（高度100km）で宇宙観光市場を開拓","Phase3：軌道投入能力を追加し衛星打ち上げ市場へ参入"] }
+    ],
+    breakthrough:"「宇宙に行ける飛行機」の核心は、飛行機とロケットを競合ではなく協業として設計すること。飛行機の再利用性・空港インフラ・段階的上昇という強みを活かし、ロケットの高速加速と組み合わせる2段式アーキテクチャが現実解。Virgin GalacticとStratolaunchはすでに実証段階にある。"
+  },
+
+  砂漠: {
+    reasons: [
+      { wall:"水が極端に少なく農業用灌漑が不可能", refutation:"海水淡水化コストは過去20年で80%以上低下。太陽光発電と組み合わせれば砂漠沿岸部では無尽蔵の真水が作れる。", example:"イスラエル：国土60%が砂漠でも点滴灌漑で農業輸出国に転換", solution:"太陽光発電所と逆浸透膜淡水化プラントを砂漠沿岸に併設し農業用水を自給する。", steps:["太陽光パネルで電力を自給（砂漠の日照は年2500時間以上）","余剰電力で海水淡水化（逆浸透膜）を稼働","点滴灌漑で水使用量を露地栽培の30%以下に抑制"] },
+      { wall:"土壌が痩せていて作物が育たない", refutation:"水耕・養液栽培やバイオチャーで砂に保水性を付与する技術が実証済み。砂漠は病害虫が少なく制御環境農業に適している。", example:"UAE：砂漠の垂直農場で土なしレタス・ハーブを年中量産", solution:"屋内垂直農場＋砂地へのバイオチャー混合の2トラック戦略で土壌問題を回避する。", steps:["短期：垂直農場で葉物野菜・ハーブを収益化","中期：砂にバイオチャー＋微生物を混合し土壌を育成","長期：外気露地栽培に移行し大規模穀物生産へ"] },
+      { wall:"昼間55℃超の高温で作物が枯れる", refutation:"高温と表裏一体の豊富な太陽光は発電・冷却の両方に使える。蒸発冷却温室で外気より20℃低い栽培環境を作れる。", example:"サハラフォレスト・プロジェクト：チュニジア砂漠で太陽熱冷却温室を実証", solution:"遮光ネット＋蒸発冷却の「パッシブ冷却温室」を建設し適切な栽培環境を作る。", steps:["遮光ネット（遮光率50%）で直射日光を遮断","湿らせた多孔質素材を通じた蒸発冷却で気温を下げる","温室内CO₂を濃縮し光合成を促進（収量1.5倍）"] },
+      { wall:"砂嵐で施設・設備が破壊される", refutation:"防砂林・半地下構造・流線形設計で砂嵐の影響を最小化でき、風力発電の電力源として活用できる。", example:"中国・クブチ砂漠：30年の植林で6000km²を緑地化・農地化", solution:"農場外周に防砂林を植え施設を半地下構造にして風荷重を90%削減する。", steps:["外周3列の砂防林（ポプラ・タマリスク）を先行植栽","主要施設を地表より1.5m掘り下げた半地下構造で建設","風向を計算した流線形屋根で砂の堆積を防ぐ"] },
+      { wall:"輸送インフラが整っておらず出荷コストが採算を上回る", refutation:"砂漠は既存インフラの制約がなく一から設計できる。高付加価値・軽量農産品に特化すれば輸送コスト問題を回避できる。", example:"モロッコ：サハラ砂漠の太陽光で発電し欧州へ電力輸出、インフラ問題を逆転", solution:"まず高付加価値・軽量農産物に特化し輸送コストを収益で吸収できる品目から参入する。", steps:["Phase1：サフラン・高級ハーブなど1kgあたり1万円超の品目に集中","Phase2：収益で道路・冷蔵輸送インフラを整備","Phase3：穀物・野菜の大量生産へ拡大"] }
+    ],
+    breakthrough:"砂漠農業の突破口は「弱点を克服する」発想を捨て「強みを活かす」設計にある。豊富な太陽光・病害虫の少なさ・広大な安価な土地という強みを活かし、水だけ解決すれば世界最高の農業地帯になる。太陽光発電＋海水淡水化＋垂直農場の三位一体が現実解。"
+  },
+
+  手術: {
+    reasons: [
+      { wall:"遠隔では手の微細な動きが正確に伝わらない", refutation:"ロボット手術システムは人間の手の震えを除去し0.1mm精度で動作する。5G通信で遅延は1ms以下まで短縮されており、熟練外科医の動作を完全に再現できる。", example:"ダヴィンチ手術システム：世界で年間100万件以上の遠隔支援手術を実施", solution:"ハプティクス（力覚フィードバック）搭載の手術ロボットと5G専用回線を組み合わせる。", steps:["5G専用回線で遅延1ms以下の通信環境を確保","ハプティクス技術で触覚・圧力感覚をリアルタイム伝送","AIが通信遅延を予測補正し動作の連続性を保証"] },
+      { wall:"緊急事態に即座に対応できない", refutation:"現地に補助スタッフと手術ロボットを配置すれば、遠隔医師が指示を出しながら実施できる。地方の医師がオンライン指導を受ける「ハイブリッド手術」は既に実用化されている。", example:"NASA：宇宙ステーション内での遠隔医療処置プロトコルを確立", solution:"現地に訓練された手術アシスタントとロボットを常備し、遠隔専門医とのハイブリッド体制を構築する。", steps:["現地に手術アシスタント（PA）とロボット機器を配置","専門医はVRで術野を立体視しながら遠隔操作","緊急時は現地スタッフが自律モードで対応できる訓練を実施"] },
+      { wall:"通信障害・停電リスクがある", refutation:"冗長化した通信システムと自動一時停止機能で対応できる。飛行機の自動操縦システムも同様のリスクを克服している。", example:"軍の遠隔手術プログラム：衛星通信3系統冗長化で戦場での手術を実現", solution:"衛星・5G・光ファイバーの3系統冗長化と、緊急停止→現地引き継ぎプロトコルを設計する。", steps:["衛星通信・5G・光ファイバーの3系統を並列運用","通信断絶時はロボットが安全位置へ自動退避","現地アシスタントが即座に引き継げる標準手順を訓練"] },
+      { wall:"法規制・医療免許が国境をまたげない", refutation:"テレメディシンの規制緩和は世界的に進んでいる。コロナ禍でオンライン診療が急拡大し、遠隔手術の法整備も各国で始まっている。", example:"EU：越境テレメディシン指令で加盟国間の遠隔医療を合法化", solution:"規制の進んだ国・地域でモデルケースを作り、国際標準として輸出する戦略を取る。", steps:["規制先進国（エストニア・シンガポール等）で先行実証","安全実績データをもとにWHOへ国際標準を提案","二国間協定から始め徐々に適用国を拡大"] },
+      { wall:"患者の心理的不安が大きく受け入れられない", refutation:"自動車・飛行機もかつては「機械に命を預けられない」と言われた。実績の積み重ねと透明性のある情報提供で信頼は構築できる。", example:"ロボット手術の合併症率：熟練外科医による手術と同等以下であることが複数研究で実証", solution:"小手術から実績を積み上げ、成功率データを公開することで段階的に信頼を獲得する。", steps:["まず低リスクの内視鏡手術から遠隔支援を開始","全手術データをリアルタイム公開し透明性を確保","患者が手術前に遠隔医師とVRで対面できる仕組みを作る"] }
+    ],
+    breakthrough:"遠隔手術の突破口は「外科医をどこにでもテレポートさせる」発想にある。5G・ロボティクス・AIの三位一体で、世界最高の外科医の技術をどんな僻地にも届けられる。地理的格差を技術で埋めることが医療の民主化につながる。"
+  },
+
+  核融合: {
+    reasons: [
+      { wall:"プラズマを安定して閉じ込めることができない", refutation:"磁場閉じ込め技術はトカマク型の進化とAI制御により飛躍的に向上した。ITERプロジェクトは500MWの出力を目指す段階にある。", example:"NIF（米国）：2022年に核融合点火を達成、投入エネルギーを上回る出力を初確認", solution:"AIによるリアルタイムプラズマ制御と高温超伝導磁石を組み合わせた新世代トカマクを設計する。", steps:["AIで1秒間に数百万回プラズマ状態を解析・補正","高温超伝導磁石で従来比3倍の磁場強度を実現","民間企業（Commonwealth Fusion等）と並走し開発を加速"] },
+      { wall:"エネルギー収支がプラスにならない（投入より少ない出力）", refutation:"2022年にNIFが初めて「点火」を達成し、投入エネルギーを上回る出力を記録。技術的障壁は突破された。あとは効率改善とスケールアップの問題。", example:"NIF 2022年実験：2.05MJの投入に対し3.15MJの出力を達成", solution:"レーザー効率の改善と連続点火サイクルの実現に集中し、商業運転に必要なQ値10以上を目指す。", steps:["レーザー効率を現在の1%から50%以上へ改善","1日1000回以上の連続点火サイクルを実現","発電タービンとの統合設計で総合効率を最大化"] },
+      { wall:"トリチウム燃料が希少で大量調達できない", refutation:"核融合炉自体がリチウムからトリチウムを生産できる「ブリーディングブランケット」技術が開発されている。リチウムは海水から無限に抽出可能。", example:"ITER：ブリーディングブランケットモジュールを装備し燃料自給を目指す設計", solution:"炉内でトリチウムを自己生産するブリーディングブランケットを標準装備とし燃料問題を内部解決する。", steps:["リチウムブランケットで炉内トリチウム自己生産を実現","海水からのリチウム抽出技術（コスト低下中）と連携","余剰トリチウムを他炉へ供給する「種火」戦略で普及加速"] },
+      { wall:"建設コストが原発の数倍になる", refutation:"民間企業の参入で設計の自由度が増し、コストは急低下している。Commonwealth FusionやHelion Energyは2030年代の商業運転を目指している。", example:"Commonwealth Fusion：民間資金20億ドルを調達、2030年代商業炉を計画", solution:"小型モジュール型核融合炉（SMF）で量産化し、建設コストを大型炉の1/10以下に削減する。", steps:["小型炉（200MW級）で量産設計を標準化","工場生産・現地組立方式でコストを削減","最初の商業炉の実績でコストを証明し量産を加速"] },
+      { wall:"放射性廃棄物の処理問題が解決できない", refutation:"核融合は核分裂と異なりウランを使わない。発生する放射性廃棄物は中性子で活性化した炉構造材のみで、半減期は数十年と核分裂廃棄物（数万年）に比べ桁違いに短い。", example:"ITER試算：核融合廃棄物の99%が100年以内に無害化レベルに到達", solution:"低放射化材料（バナジウム合金・SiC複合材）を炉構造材に採用し廃棄物の放射能を最小化する。", steps:["低放射化材料を炉壁・ブランケットに採用","廃棄物を100年管理で対応可能な規模に抑制","使用済み構造材を次世代炉の建材としてリサイクル"] }
+    ],
+    breakthrough:"核融合の突破口は、2022年のNIF点火達成で「技術的可能性」から「工学的実用化」フェーズに移行したこと。民間資金の急増と高温超伝導磁石・AI制御の進化が開発を加速している。2030年代の商業運転は現実的なロードマップになった。"
+  },
+
+  長寿: {
+    reasons: [
+      { wall:"細胞の老化は生物学的に避けられない宿命", refutation:"老化は「プログラムされた必然」ではなく「制御可能な生物学的プロセス」であることが判明した。ヤマナカ因子による細胞の若返りが実験室で実証されている。", example:"Altos Labs（ベゾス出資）：細胞リプログラミングで老化逆転研究を本格化", solution:"セノリティクス（老化細胞除去薬）と細胞リプログラミングを組み合わせた「老化治療」を開発する。", steps:["老化細胞を標的にするセノリティクス薬を定期投与","ヤマナカ因子の部分的発現で組織を若返らせる","AI解析で個人の老化速度を計測し投与タイミングを最適化"] },
+      { wall:"テロメアの短縮で細胞分裂の上限がある", refutation:"テロメラーゼ活性化でテロメアを延長できることは1984年に発見されノーベル賞を受賞。問題はがん化リスクとのバランスで、これも制御可能な工学的問題。", example:"Elizabeth Blackburn：テロメア・テロメラーゼ研究でノーベル生理学・医学賞受賞（2009年）", solution:"テロメラーゼを組織特異的に活性化し、がんリスクを増やさずにテロメアを維持する遺伝子治療を開発する。", steps:["CRISPR-Cas9でテロメラーゼ遺伝子の発現を精密制御","幹細胞のテロメアを優先的に維持する標的治療を設計","p53等のがん抑制機構と連動させリスクを相殺"] },
+      { wall:"脳神経細胞は再生しないため認知機能が衰える", refutation:"海馬では成人後も神経新生が起こることが確認されている。さらに脳のニューラルインターフェースと記憶補助AIを組み合わせれば認知機能は補完できる。", example:"Neuralink：脳-コンピュータインターフェースで麻痺患者の機能回復を実証", solution:"神経新生を促す薬物治療とAI記憶補助システムの二本柱で認知機能を100歳以降も維持する。", steps:["BDNF（脳由来神経栄養因子）投与で神経新生を促進","ニューラルインターフェースで記憶の記録・再生を支援","睡眠中の記憶整理プロセスを最適化する睡眠療法を並用"] },
+      { wall:"心臓・肝臓・腎臓などの臓器が劣化する", refutation:"再生医療・3Dバイオプリンティング・iPS細胞から患者自身の臓器を培養して移植する技術が実用化段階にある。臓器は「交換可能な部品」になりつつある。", example:"京都大学iPS細胞研究所：心筋細胞・角膜・血小板のiPS由来移植を臨床試験で実施", solution:"iPS細胞バンクに患者の細胞を保存し、臓器劣化が始まる前に予防的に再生臓器へ換装する。", steps:["20代で患者のiPS細胞を採取・バンクに保存","定期スクリーニングで臓器劣化を10年前から予測","劣化が一定水準に達したら培養済み再生臓器に換装"] },
+      { wall:"社会・経済システムが超長寿社会に対応できない", refutation:"年金・雇用・教育のシステムは人間が作ったものであり、前提が変われば再設計できる。「100歳まで働く・学ぶ」社会モデルはすでに議論が始まっている。", example:"シンガポール：生涯学習制度「SkillsFuture」で60歳以降も職業訓練を継続支援", solution:"人生を「教育→労働→引退」の3ステージから「複数回リセット可能なマルチステージ」に再設計する。", steps:["40歳・60歳・80歳で「キャリアリセット」を制度化","年金を「一括支給」から「生涯分散支給」に転換","超長寿による経験知の蓄積を社会の生産性向上に活用"] }
+    ],
+    breakthrough:"人間の長寿化の突破口は、老化を「避けられない宿命」から「治療可能な疾患」として再定義すること。細胞リプログラミング・セノリティクス・臓器再生・ニューラルインターフェースの4技術が揃いつつある今、2050年代には150歳という目標は非現実的ではない。"
+  },
+
+  淡水: {
+    reasons: [
+      { wall:"海水淡水化のエネルギーコストが高すぎる", refutation:"逆浸透膜技術の進化でエネルギー消費は過去30年で75%削減。再生可能エネルギーと組み合わせれば実質エネルギーコストはゼロに近づく。", example:"サウジアラビア：世界最大の太陽光駆動淡水化プラントで日産100万m³を生産", solution:"太陽光・風力発電と逆浸透膜プラントを一体設計し、エネルギーコストを限りなくゼロに近づける。", steps:["再生可能エネルギー100%の淡水化プラントを設計","余剰電力で水素を生産しエネルギーを無駄なく活用","プラントの余剰水を農業・工業に優先配分"] },
+      { wall:"濃縮塩水（ブライン）の海洋汚染が環境破壊になる", refutation:"ブラインから有価金属（リチウム・マグネシウム・ウラン）を抽出する技術が進化し、廃棄物から資源に変わりつつある。", example:"MIT研究：ブラインからリチウムを電気化学的に抽出、EV電池材料として活用", solution:"ブライン処理プラントを併設し、濃縮塩水から希少金属を回収して収益化・無害化する。", steps:["電気透析でブラインから塩化ナトリウムを分離・製品化","イオン交換膜でリチウム・マグネシウムを選択的抽出","残留ブラインを塩田農業・化学原料として完全利用"] },
+      { wall:"内陸部・山岳地帯には海がなく利用できない", refutation:"大気中の水蒸気を収集する「大気水収穫」技術が急速に進化。砂漠でも1日100L以上の水を空気から作れる装置が実用化されている。", example:"SOURCE Global：太陽光で大気から水を生成するパネルをアリゾナ・中東で商業展開", solution:"大気水収穫パネルを建物の屋根や壁面に設置し、水道インフラなしで水を自給する分散型システムを構築。", steps:["建物屋根面積の30%に大気水収穫パネルを設置","集水した水をミネラル調整フィルターで飲料水化","余剰水を地域のタンクに蓄積し非常用水源として活用"] },
+      { wall:"水の輸送・配管インフラが整備できない", refutation:"海水淡水化の水を長距離パイプラインで輸送する技術は確立されている。サウジアラビアは沿岸から内陸1000km超まで水を送っている。", example:"リビア大人工川プロジェクト：砂漠地下水を500km輸送するパイプラインを建設", solution:"太陽光駆動ポンプと高密度ポリエチレンパイプを組み合わせた低コスト輸送システムを設計する。", steps:["太陽光ポンプで電力コストゼロの輸送を実現","モジュール型パイプラインで段階的に延伸","地域ごとの貯水タンクで配水を最適化"] },
+      { wall:"水需要が増え続け供給が追いつかない", refutation:"農業の水使用効率を高めれば世界の水消費の70%を占める農業用水を大幅削減できる。精密農業と点滴灌漑の普及で同じ食料を40%少ない水で生産できる。", example:"オランダ：世界2位の農業輸出国でありながら精密農業で水使用量を世界最低水準に維持", solution:"IoTセンサーと衛星データで農地の水需要をリアルタイム計測し、必要な場所に必要な量だけ届ける。", steps:["土壌水分センサーと気象データを統合した灌漑AIを導入","点滴灌漑で作物の根元に直接水を供給（損失90%削減）","水使用量と収量のデータを農家にフィードバックし継続改善"] }
+    ],
+    breakthrough:"海水・大気・農業改革の三方向から同時にアプローチすることが水問題の突破口。エネルギーコストが再生可能エネルギーで解決されれば、地球上の水不足は技術的に解決可能な問題になる。"
+  },
+
+  空飛ぶ: {
+    reasons: [
+      { wall:"縦方向の離着陸（VTOL）はエネルギー消費が大きすぎる", refutation:"電動モーターの効率は内燃機関の3倍以上。複数の小型ローターを分散配置するeVTOL設計は従来ヘリコプターより大幅に効率的。", example:"Joby Aviation：eVTOLで航続距離240km・最高速度320km/hを実証", solution:"分散型電動ローター＋固定翼の複合設計で、離着陸時はVTOL・巡航時は固定翼飛行に切り替える。", steps:["離着陸フェーズ：8基の電動ローターで垂直離着陸","遷移フェーズ：前傾チルトローターで水平飛行に移行","巡航フェーズ：固定翼揚力で電力消費を最小化"] },
+      { wall:"バッテリーが重すぎて飛行距離が短い", refutation:"全固体電池の実用化で2030年代にはエネルギー密度が現行の3倍に達する見通し。水素燃料電池との組み合わせで航続距離問題は解決される。", example:"トヨタ全固体電池：2027〜2028年の搭載開始を発表、航続距離1000km超を目標", solution:"全固体電池＋水素燃料電池のハイブリッドシステムで重量を抑えながら航続距離を延ばす。", steps:["離着陸の高出力フェーズは全固体電池が担当","巡航の低出力フェーズは水素燃料電池が担当","回生制動で着陸時のエネルギーを回収・再利用"] },
+      { wall:"空域管理が複雑になり衝突リスクが高まる", refutation:"UTM（無人航空機交通管理）システムが開発中で、AIが数千機を同時管理できる。自動車のカーナビのように、飛行ルートをリアルタイムで最適化できる。", example:"NASA UTMプロジェクト：都市上空での無人機交通管理システムを実証実験中", solution:"AIベースの統合UTMシステムで全機体をクラウド管理し、衝突回避を自動化する。", steps:["全機体にADS-B transponderを搭載し位置を常時送信","クラウドAIが飛行ルートを1秒単位で再計算・割当","緊急時は自動的に最寄りの安全な着陸地点へ誘導"] },
+      { wall:"騒音問題で都市部での運用が受け入れられない", refutation:"電動ローターは内燃機関より大幅に静か。設計最適化でさらに60dB以下（図書館レベル）の静音化が実証されている。", example:"Wisk Aero：電動eVTOLで騒音55dBを達成、ヘリコプター（85dB）の1/10以下", solution:"ローター形状の最適化と飛行高度の制御で、地上での騒音を生活音レベルに抑える。", steps:["非等間隔ローターブレードで特定周波数の騒音をキャンセル","市街地上空では高度300m以上を飛行し地上騒音を低減","発着ポートを建物屋上に設置し地上への騒音影響を最小化"] },
+      { wall:"墜落時の安全性が車より大幅に低い", refutation:"飛行機の安全記録は自動車より圧倒的に優れている。eVTOLは複数ローターの冗長設計で、一基故障しても飛行継続または安全着陸できる。", example:"Joby：8基ローターのうち4基が故障しても安全着陸できる冗長設計を実証", solution:"全ローター独立制御＋自動パラシュートシステムで、あらゆる故障モードに対応した多重安全設計を採用する。", steps:["ローター8基のうち任意の4基が停止しても飛行継続可能な設計","全電源喪失時は自動展開パラシュートで垂直降下","AIが機体状態を1000回/秒モニタリングし異常を即検知"] }
+    ],
+    breakthrough:"空飛ぶ車の突破口は電動化にある。内燃機関では不可能だったVTOL＋固定翼の複合設計が、電動モーターの小型・軽量・高効率で実現した。2020年代後半の商業運航開始はほぼ確実で、都市交通の概念が根本から変わる。"
+  },
+
+  プラスチック: {
+    reasons: [
+      { wall:"プラスチックは自然界で分解されない", refutation:"プラスチックを食べる微生物・酵素が次々と発見されている。PETを分解する酵素（PETase）は遺伝子改良で効率が大幅に向上している。", example:"吉田崇仁教授（慶応大）：PET分解細菌Ideonella sakaiensisを2016年に発見", solution:"遺伝子改良PETaseを産業スケールで生産し、廃棄プラスチックを原料に戻す「生物学的リサイクル工場」を構築する。", steps:["改良PETaseを大腸菌で大量発現・精製","廃プラスチックを粉砕後、酵素タンクで24時間以内に分解","回収されたモノマーを再重合し新品同等のPETに再生"] },
+      { wall:"リサイクルコストが新品製造より高い", refutation:"ケミカルリサイクル（化学的に原料に戻す）のコストは量産化で急低下中。さらに炭素税・拡大生産者責任の導入で新品製造コストが上昇し、逆転が起きつつある。", example:"LyondellBasell：プラスチックを燃料油に変える化学リサイクルを商業スケールで稼働", solution:"ケミカルリサイクルの量産化と政策的インセンティブを組み合わせ、リサイクル品の方が安くなる経済設計をする。", steps:["廃プラ収集を義務化し原料の安定供給を確保","ケミカルリサイクル工場をコンビナート型で大規模化","リサイクル材料に低税率を適用し市場競争力を付与"] },
+      { wall:"海洋プラスチックはすでに拡散しすぎて回収不可能", refutation:"海洋プラスチック回収システムの実証が進んでいる。河川での回収が最も効率的で、主要河川1000本で世界の海洋流入の80%を防げることが研究で示されている。", example:"The Ocean Cleanup：北太平洋ゴミベルトでの回収システムを商業運用開始、100万kg以上を回収", solution:"海洋への流入を河川段階で止めることと並行し、既存の海洋プラスチックはAI搭載船で効率回収する。", steps:["世界の主要河川1000本に自動回収システムを設置","AI搭載無人船がゴミ濃度の高い海域を自動巡回・回収","回収したプラスチックを現地でオイルに変換し燃料費に充当"] },
+      { wall:"代替素材（紙・バイオプラ）の性能がプラスチックに劣る", refutation:"バイオプラスチックの耐水性・強度は急速に改善されており、特定用途では石油系プラスチックを完全代替できるレベルに達している。", example:"Novamont：トウモロコシ由来バイオプラで食品包装・農業用フィルムを量産", solution:"用途別に最適な代替素材を割り当てる「素材ポートフォリオ」戦略で全体の使用量を90%削減する。", steps:["食品包装→海藻由来フィルムに順次移行","農業用フィルム→土壌生分解性バイオプラに切替","工業用途→炭素繊維・アルミ複合材で高性能代替"] },
+      { wall:"消費者行動が変わらず需要がなくならない", refutation:"消費者はプラスチックが欲しいのではなく「機能」が欲しいだけ。同等の機能を代替素材で提供し、かつコストが下がれば行動変容は不要で自然に置き換わる。", example:"EU：使い捨てプラスチック指令で2021年以降10品目を禁止、代替品市場が急成長", solution:"プラスチックを使わないほうが消費者にとってコスト・利便性で有利な設計にし、選択の変更を強制ではなく自然に促す。", steps:["詰め替え容器に割引を適用し経済的インセンティブを設計","サブスクリプション型の容器貸し出しサービスを展開","プラフリー製品に「認証マーク」を付与しブランド価値化"] }
+    ],
+    breakthrough:"プラスチックごみゼロの突破口は、リサイクルと代替の両輪を同時に回すこと。微生物分解・ケミカルリサイクル・代替素材の三技術が揃いつつある今、問題は技術より「経済設計」にある。プラスチックを使わない方が得になる仕組みを作れば、行動変容は自然に起きる。"
+  },
+
+  教育: {
+    reasons: [
+      { wall:"質の高い教育は優秀な教師が必要で人材が不足している", refutation:"AIチューターは24時間・どこでも・個人に最適化された指導ができる。Khan AcademyのKhanmigo（GPT-4搭載）はすでに数百万人に無料で教育を提供している。", example:"Khan Academy：AIチューターで途上国の子供が先進国と同等の教育にアクセス", solution:"AIチューターを全生徒に配布し、人間教師は「ファシリテーター」として創造性・社会性の指導に集中させる。", steps:["AIが各生徒の理解度・学習スタイルを分析し最適問題を出題","人間教師はAIが苦手なプロジェクト学習・対話・メンタリングに注力","保護者もAIダッシュボードで子供の進捗をリアルタイム確認"] },
+      { wall:"経済格差により教育機会が不平等", refutation:"スマートフォン普及率は途上国でも急拡大しており、質の高い教育コンテンツのデジタル配信コストは限りなくゼロに近い。", example:"M-Pesa＋教育アプリ：ケニアの農村部でスマホ経由の高品質教育が普及", solution:"スマートフォン一台で世界最高水準の教育にアクセスできるオフライン対応アプリを開発・無償配布する。", steps:["授業動画をオフライン視聴可能な形式で配信（通信費不要）","AIが低スペック端末でも動作する軽量チューターを実装","奨学金・デバイス支援と教育コンテンツをセットで提供"] },
+      { wall:"子供のモチベーションが続かない", refutation:"ゲーミフィケーションと個人化された学習パスにより、子供は「学びがゲームより面白い」と感じられる。Duolingoの継続率は多くの学校の宿題より高い。", example:"Duolingo：ゲーミフィケーションで5億人超が語学学習を継続", solution:"学習進捗をRPGのキャラクター成長として可視化し、学びそのものをゲームより面白くする。", steps:["学習成果に応じてキャラクターが成長するビジュアルを導入","友達・クラスとのランキング・協力クエストで社会性を活用","短時間（5〜15分）の集中セッションを1日複数回に分散"] },
+      { wall:"暗記中心の教育では創造性が育たない", refutation:"AIが知識の検索・整理を代替するようになった今、教育の役割は「知識を詰め込む」から「問いを立て・試行し・協働する力を育てる」へシフトできる。", example:"フィンランド：教科書廃止・プロジェクト型学習で国際学力調査PISA上位を維持", solution:"「知識習得」はAIに任せ、授業時間を全てプロジェクト型・問題解決型学習に充てる。", steps:["事前学習（知識習得）はAIチューターで自宅完結","授業時間は全てグループでの問題解決・制作・発表に使用","評価を「テストの点数」から「プロジェクトの成果物」へ転換"] },
+      { wall:"親・社会の「良い大学・良い会社」という価値観が変わらない", refutation:"AIと自動化で「良い会社への就職」という概念自体が変わりつつある。起業・フリーランス・複業が主流となる社会では、学歴より実績ポートフォリオが評価される。", example:"Google・Apple・IBM：学歴不問採用を宣言し、スキルと実績で評価する採用に転換", solution:"学歴に代わる「スキル認証・実績ポートフォリオ」制度を産学連携で構築し、評価軸を社会全体で変える。", steps:["企業と連携したマイクロ認定資格を12〜18歳向けに開発","学生の制作物・プロジェクト実績をブロックチェーンで証明","採用企業に学歴不問・ポートフォリオ採用のインセンティブを設計"] }
+    ],
+    breakthrough:"教育革命の突破口は、AIを「教師の代替」ではなく「個人専属チューター」として全員に配布すること。人間教師はAIが苦手な創造性・共感・社会性の育成に専念し、知識習得の効率を100倍にしながら人間にしかできない教育の質を同時に上げる。"
+  },
+
+  交通: {
+    reasons: [
+      { wall:"自動運転は予測不能な人間の行動に対応できない", refutation:"人間ドライバーの事故の94%は人的ミスが原因。AIは疲労・酔い・不注意がなく、360度センサーで人間の視野の限界を超えた認知ができる。", example:"Waymo：自動運転タクシーが米国複数都市で商業運行中、事故率は人間ドライバーの1/10以下", solution:"完全自動運転専用レーンを設けることで、人間との混在による不確実性を段階的に排除する。", steps:["高速道路・幹線道路に自動運転専用レーンを先行整備","専用レーン内では全車V2V通信で位置・速度を共有","一般道は自動運転率が80%を超えた段階で全面移行"] },
+      { wall:"電気自動車は充電時間が長く航続距離が短い", refutation:"全固体電池と超高速充電技術で10分以内の充電が実現しつつある。さらにバッテリー交換方式なら「充電時間ゼロ」が可能。", example:"NIO：バッテリー交換ステーションを全国展開、3分でバッテリー交換完了", solution:"超高速充電（10分・80%）とバッテリー交換の併用で、EV補給を現在のガソリン給油より速くする。", steps:["350kW超の超高速充電器を高速道路全SAに設置","都市部にバッテリー交換ステーションを500m間隔で展開","バッテリーを所有から「サブスク」に変え交換コストをゼロに"] },
+      { wall:"公共交通は赤字で維持できない", refutation:"MaaSの導入で交通手段を統合管理すれば需要予測の精度が上がり空席ロスを大幅削減できる。さらに自動運転で人件費が最大コストから消える。", example:"フィンランド・Whim：全交通手段を月額定額で使えるMaaSアプリが実用化", solution:"AI需要予測×自動運転×MaaSの三位一体で、公共交通を「赤字前提」から「収益事業」に転換する。", steps:["AIで乗客数を30分単位で予測し車両を動的に配置","自動運転バスで人件費を70%削減","MaaSアプリで全交通手段を一元決済し収益を統合管理"] },
+      { wall:"インフラ（道路・鉄道）の老朽化が深刻", refutation:"IoTセンサーとAI解析で橋梁・トンネルの劣化を予測し、事後保全から予知保全に切り替えれば維持コストを大幅削減できる。", example:"東京メトロ：AIによる設備異常予知システムを導入、突発故障を40%削減", solution:"全インフラにセンサーを埋め込み、AIが劣化速度を予測して最適な補修タイミングを自動算出する。", steps:["橋梁・道路にIoT振動センサーを設置（低コスト小型品）","AIが劣化曲線を予測し優先補修リストを自動生成","ドローンによる定期点検で人手によるコストを90%削減"] },
+      { wall:"渋滞は解決不可能で都市機能を麻痺させる", refutation:"渋滞の70%は「ボトルネック」と「非効率な信号制御」が原因。AIによる信号最適化だけで都市部の渋滞を30%以上削減できることが実証されている。", example:"ピッツバーグ：AI信号制御システムSumoで渋滞25%削減・排ガス21%削減を達成", solution:"全信号をAIで連動制御し、リアルタイムの交通流に合わせて信号タイミングを動的に最適化する。", steps:["市内全信号をネットワーク接続しAI中央制御に移行","車両位置データをリアルタイムで収集し渋滞を1km先から予測","イベント・工事・気象データを統合し信号タイミングを事前調整"] }
+    ],
+    breakthrough:"交通革命の突破口は自動運転・電動化・MaaSの三革命を同時に進めること。これらは相互に補完し合い、自動運転がMaaSの収益性を高め、電動化が自動運転のエネルギー問題を解決する。2030年代には都市交通の概念が根本から変わる。"
+  }
+};
+
+const KEYWORDS = {
+  宇宙: ['宇宙','スペース','ロケット','衛星','宇宙船'],
+  砂漠: ['砂漠','乾燥','荒野','荒地'],
+  手術: ['手術','医療','病院','遠隔','外科','診療'],
+  核融合: ['核融合','原子力','エネルギー','発電','核'],
+  長寿: ['長寿','寿命','老化','不老','健康','100歳','150歳'],
+  淡水: ['淡水','飲料水','水不足','海水','水資源'],
+  空飛ぶ: ['空飛ぶ','フライングカー','eVTOL','自動車','車'],
+  プラスチック: ['プラスチック','ごみ','廃棄','リサイクル','海洋汚染'],
+  教育: ['教育','学校','学習','勉強','授業','AI教育'],
+  交通: ['交通','渋滞','自動運転','電気自動車','EV','公共交通','鉄道']
+};
+
+function findData(theme) {
+  for (const [key, words] of Object.entries(KEYWORDS)) {
+    if (words.some(w => theme.includes(w))) {
+      return { theme, ...DB[key] };
+    }
+  }
+  return null;
+}
+
+function setExample(text) {
+  document.getElementById('themeInput').value = text;
+}
+
+function analyze() {
+  const theme = document.getElementById('themeInput').value.trim();
+  if (!theme) return;
+  const btn = document.getElementById('analyzeBtn');
+  const output = document.getElementById('output');
+  const loading = document.getElementById('loading');
+  const results = document.getElementById('results');
+  btn.disabled = true;
+  output.style.display = 'block';
+  loading.style.display = 'block';
+  results.innerHTML = '';
+  setTimeout(() => {
+    const data = findData(theme);
+    loading.style.display = 'none';
+    if (data) {
+      render(data);
+    } else {
+      const keys = Object.values(KEYWORDS).flat().join('・');
+      results.innerHTML = `<div class="no-match">
+        <strong>対応テーマが見つかりませんでした。</strong><br><br>
+        現在対応しているキーワード：<br>${keys}<br><br>
+        上記のサンプルボタンからお試しください。
+      </div>`;
+    }
+    btn.disabled = false;
+  }, 1400);
+}
+
+function render(data) {
+  const results = document.getElementById('results');
+  let html = '<div class="section-title">壁 → 反証 → 解決策</div>';
+  data.reasons.forEach((item, i) => {
+    const stepsHtml = item.steps.map(s => `<div class="step">${s}</div>`).join('');
+    html += `
+    <div class="reason-card" id="card${i}">
+      <div class="wall">
+        <span class="wall-num">壁 ${String(i+1).padStart(2,'0')}</span>
+        <span class="wall-text">${item.wall}</span>
+      </div>
+      <div class="refute">
+        <div class="block-label blue">// 反証</div>
+        <div class="refute-text">${item.refutation}</div>
+        <div class="example-tag">実例 → ${item.example}</div>
+      </div>
+      <div class="solution">
+        <div class="block-label green">// 解決策</div>
+        <div class="solution-text">${item.solution}</div>
+        <div class="solution-steps">${stepsHtml}</div>
+      </div>
+    </div>`;
+  });
+  html += `
+  <div class="summary-box" id="summaryBox">
+    <div class="section-title">核心的突破口</div>
+    <div class="summary-text">${data.breakthrough}</div>
+  </div>`;
+  results.innerHTML = html;
+  data.reasons.forEach((_, i) => {
+    setTimeout(() => {
+      const el = document.getElementById('card' + i);
+      if (el) el.classList.add('visible');
+    }, i * 180);
+  });
+  setTimeout(() => {
+    const el = document.getElementById('summaryBox');
+    if (el) el.classList.add('visible');
+  }, data.reasons.length * 180 + 200);
+}
+
+document.getElementById('themeInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) analyze();
+});
+</script>
+</body>
+</html>
